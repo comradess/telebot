@@ -54,26 +54,26 @@ jobs:
 
       - name: Create Ngrok Tunnel for RDP
         run: |
-          #ngrok tcp 3389 --log=stdout > ngrok_rdp_output.txt &
+          ngrok tcp 3389 --log=stdout > ngrok_rdp_output.txt &
 
       - name: Create Ngrok Tunnel for SSH
         run: |
-          ngrok tcp 22 --log=stdout > ngrok_ssh_output.txt &
+          #ngrok tcp 22 --log=stdout > ngrok_ssh_output.txt &
 
       - name: Show Ngrok Tunnel URLs
         run: |
           sleep 12 # Wait for Ngrok to start the tunnels (adjust time as needed)
           echo "RDP Tunnel URL:"
-          #cat ngrok_rdp_output.txt | grep "url="
+          cat ngrok_rdp_output.txt | grep "url="
           echo "SSH Tunnel URL:"
-          cat ngrok_ssh_output.txt | grep "url="
+          #cat ngrok_ssh_output.txt | grep "url="
 
       - name: Run Loop
         run: |
           while true; do
             sleep 600 # Sleep for 10 minutes
             echo "RDP Tunnel URL:"
-            #cat ngrok_rdp_output.txt | grep "url="
+            cat ngrok_rdp_output.txt | grep "url="
             echo "SSH Tunnel URL:"
-            cat ngrok_ssh_output.txt | grep "url="
+            #cat ngrok_ssh_output.txt | grep "url="
           done
