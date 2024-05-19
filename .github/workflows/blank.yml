@@ -1,0 +1,46 @@
+name: Ubuntu RDP with Ngrok
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9999
+
+    env:
+      RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+
+    steps:
+      - name: Download Ngrok
+        run: |
+          wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+          unzip ngrok-stable-linux-amd64.zip
+
+      - name: Connect your Ngrok account
+        run: ./ngrok authtoken $NGROK_AUTH_TOKEN
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+
+      - name: Enable RDP and Install xrdp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xrdp
+          sudo ufw allow 3389/tcp
+          sudo systemctl enable xrdp
+          sudo systemctl start xrdp
+
+      - name: Create Tunnel
+        run: |
+          ./ngrok tcp 3389 > ngrok_output.txt &
+
+      - name: Show Ngrok Tunnel URL
+        run: |
+          sleep 12 # Wait for Ngrok to start the tunnel (adjust time as needed)
+          cat ngrok_output.txt
+
+      - name: Run Loop
+        run: |
+          while true; do
+            sleep 1 # Sleep for 6 hours
+             cat ngrok_output.txt 
+          done
