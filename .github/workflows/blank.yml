@@ -1,4 +1,4 @@
-name: Ubuntu RDP with Ngrok
+name: Ubuntu RDP with Ngrok and SSH
 
 on: workflow_dispatch
 
@@ -14,24 +14,21 @@ jobs:
     steps:
       - name: Download Ngrok
         run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
-          && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list \
-          && sudo apt update \
-          && sudo apt install -y ngrok
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update
+          sudo apt install -y ngrok
 
       - name: Connect your Ngrok account
         run: ngrok config add-authtoken $NGROK_AUTH_TOKEN
 
-      - name: Enable RDP and Install xrdp
+      - name: Enable RDP and Install xrdp and xfce4
         run: |
           sudo apt-get update
           sudo apt-get install -y xrdp xfce4 xfce4-goodies
           sudo ufw allow 3389/tcp
           sudo systemctl enable xrdp
           sudo systemctl start xrdp
-
-      - name: Configure xfce4 session for xrdp
-        run: |
           echo "xfce4-session" > ~/.xsession
 
       - name: Add User 'rajnikant'
@@ -39,19 +36,44 @@ jobs:
           sudo adduser --gecos "" --disabled-password rajnikant
           echo "rajnikant:rajni9771" | sudo chpasswd
           sudo usermod -aG sudo rajnikant
+          sudo mkdir -p /home/rajnikant/.config
+          sudo chown -R rajnikant:rajnikant /home/rajnikant/.config
 
-      - name: Create Ngrok Tunnel
+      - name: Configure xfce4 session for xrdp
         run: |
-          ngrok tcp 3389 --log=stdout > ngrok_output.txt &
+          sudo -u rajnikant bash -c 'echo "xfce4-session" > /home/rajnikant/.xsession'
+          sudo -u rajnikant bash -c 'mkdir -p /home/rajnikant/.config/xfce4/xfconf/xfce-perchannel-xml'
+          sudo -u rajnikant bash -c 'echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?><channel name=\"xfce4-session\" version=\"1.0\"><property name=\"general\" type=\"empty\"><property name=\"SaveOnExit\" type=\"bool\" value=\"false\"/></property></channel>" > /home/rajnikant/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml'
 
-      - name: Show Ngrok Tunnel URL
+      - name: Install and Configure SSH
         run: |
-          sleep 12 # Wait for Ngrok to start the tunnel (adjust time as needed)
-          cat ngrok_output.txt | grep "url="
+          sudo apt-get install -y openssh-server
+          sudo ufw allow 22/tcp
+          sudo systemctl enable ssh
+          sudo systemctl start ssh
+
+      - name: Create Ngrok Tunnel for RDP
+        run: |
+          ngrok tcp 3389 --log=stdout > ngrok_rdp_output.txt &
+
+      - name: Create Ngrok Tunnel for SSH
+        run: |
+          ngrok tcp 22 --log=stdout > ngrok_ssh_output.txt &
+
+      - name: Show Ngrok Tunnel URLs
+        run: |
+          sleep 12 # Wait for Ngrok to start the tunnels (adjust time as needed)
+          echo "RDP Tunnel URL:"
+          cat ngrok_rdp_output.txt | grep "url="
+          echo "SSH Tunnel URL:"
+          cat ngrok_ssh_output.txt | grep "url="
 
       - name: Run Loop
         run: |
           while true; do
-            sleep 60 # Sleep for 10 minutes
-            cat ngrok_output.txt | grep "url="
+            sleep 600 # Sleep for 10 minutes
+            echo "RDP Tunnel URL:"
+            cat ngrok_rdp_output.txt | grep "url="
+            echo "SSH Tunnel URL:"
+            cat ngrok_ssh_output.txt | grep "url="
           done
